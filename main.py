@@ -188,14 +188,6 @@ async def cmd_id(message: Message):
     )
 
 
-@dp.message(Command("keyboard"))
-async def cmd_keyboard(message: Message):
-    await message.answer(
-        "Reply keyboard сброшена. Если список команд в кнопке Menu не обновился сразу, закрой и снова открой чат.",
-        reply_markup=ReplyKeyboardRemove()
-    )
-
-
 @dp.message(Command("add"))
 async def cmd_add(message: Message):
     parts = message.text.split()
