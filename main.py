@@ -9,7 +9,7 @@ import requests
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
-from aiogram.types import Message, BotCommand, ReplyKeyboardRemove
+from aiogram.types import Message, BotCommand
 from aiogram.client.session.aiohttp import AiohttpSession
 
 
