@@ -152,7 +152,7 @@ async def on_startup(bot: Bot):
         BotCommand(command="add", description="Добавить пару в избранное"),
         BotCommand(command="list", description="Показать избранные пары"),
         BotCommand(command="del", description="Удалить пару из избранного"),
-        BotCommand(command="watch", description="Создать ценовой алерт"),
+        BotCommand(command="watch", description="Показать или создать алерт"),
         BotCommand(command="keyboard", description="Сбросить reply keyboard"),
         ])
     logger.info("Бот запускается")
@@ -175,7 +175,7 @@ async def cmd_start(message: Message):
         "/price [SYMBOL] — показать текущую цену пары или всех избранных\n"
         "/list — показать избранные\n"
         "/del SYMBOL — удалить из избранных\n"
-        "/watch SYMBOL DIRECTION PRICE INTERVAL — создать алерт\n"
+        "/watch [SYMBOL DIRECTION PRICE INTERVAL] — показать алерты или создать новый\n"
         "/id — показать chat_id и user_id\n"
         "/keyboard — убрать reply keyboard и обновить интерфейс\n"
         "Пример: /watch BTCUSDT up 65000 60"
@@ -302,9 +302,38 @@ async def cmd_del(message: Message):
 @dp.message(Command("watch"))
 async def cmd_watch(message: Message):
     parts = message.text.split()
+
+    if len(parts) == 1:
+        with closing(sqlite3.connect(DB_PATH)) as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT id, symbol, direction, target, interval_sec "
+                "FROM alerts WHERE user_id = ? AND active = 1 "
+                "ORDER BY id",
+                (message.from_user.id,)
+            )
+            rows = cur.fetchall()
+
+        if not rows:
+            await message.answer(
+                "Активных алертов пока нет.\n"
+                "Пример создания: /watch BTCUSDT up 65000 60"
+            )
+            return
+
+        lines = ["Активные алерты:"]
+        for alert_id, symbol, direction, target, interval_sec in rows:
+            lines.append(
+                f"{alert_id}. {symbol} — {direction} {target}, интервал {interval_sec} сек."
+            )
+
+        await message.answer("\n".join(lines))
+        return
+
     if len(parts) != 5:
         await message.answer(
             "Использование: /watch SYMBOL DIRECTION PRICE INTERVAL\n"
+            "Или просто /watch для списка активных алертов\n"
             "Например: /watch BTCUSDT up 65000 60"
         )
         return
