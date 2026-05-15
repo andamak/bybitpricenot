@@ -52,6 +52,7 @@ coverage.xml
 cover/
 
 *.patch
+*.db
 # Translations
 *.mo
 *.pot
