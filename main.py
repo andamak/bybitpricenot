@@ -9,7 +9,7 @@ import requests
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
-from aiogram.types import Message
+from aiogram.types import Message, BotCommand, ReplyKeyboardRemove
 from aiogram.client.session.aiohttp import AiohttpSession
 
 
@@ -145,6 +145,16 @@ def get_price(symbol: str) -> float:
 # ---------------- ХЕЛПЕР НА СТАРТ ----------------
 
 async def on_startup(bot: Bot):
+    await bot.set_my_commands([
+        BotCommand(command="start", description="Начало работы"),
+        BotCommand(command="id", description="Показать chat_id и user_id"),
+        BotCommand(command="price", description="Цена пары или избранного"),
+        BotCommand(command="add", description="Добавить пару в избранное"),
+        BotCommand(command="list", description="Показать избранные пары"),
+        BotCommand(command="del", description="Удалить пару из избранного"),
+        BotCommand(command="watch", description="Создать ценовой алерт"),
+        BotCommand(command="keyboard", description="Сбросить reply keyboard"),
+        ])
     logger.info("Бот запускается")
     if CHAT_ID:
         try:
@@ -166,7 +176,25 @@ async def cmd_start(message: Message):
         "/list — показать избранные\n"
         "/del SYMBOL — удалить из избранных\n"
         "/watch SYMBOL DIRECTION PRICE INTERVAL — создать алерт\n"
+        "/id — показать chat_id и user_id\n"
+        "/keyboard — убрать reply keyboard и обновить интерфейс\n"
         "Пример: /watch BTCUSDT up 65000 60"
+    )
+
+
+@dp.message(Command("id"))
+async def cmd_id(message: Message):
+    await message.answer(
+        f"chat_id: <b>{message.chat.id}</b>\n"
+        f"user_id: <b>{message.from_user.id}</b>"
+    )
+
+
+@dp.message(Command("keyboard"))
+async def cmd_keyboard(message: Message):
+    await message.answer(
+        "Reply keyboard сброшена. Если список команд в кнопке Menu не обновился сразу, закрой и снова открой чат.",
+        reply_markup=ReplyKeyboardRemove()
     )
 
 
