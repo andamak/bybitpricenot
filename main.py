@@ -162,7 +162,7 @@ async def cmd_start(message: Message):
     await message.answer(
         "Привет! Я бот для отслеживания цен на Bybit.\n"
         "/add SYMBOL — добавить пару в избранное (например, /add BTCUSDT)\n"
-        "/price SYMBOL — показать текущую цену пары (например, /price BTCUSDT)\n"
+        "/price [SYMBOL] — показать текущую цену пары или всех избранных\n"
         "/list — показать избранные\n"
         "/del SYMBOL — удалить из избранных\n"
         "/watch SYMBOL DIRECTION PRICE INTERVAL — создать алерт\n"
@@ -214,21 +214,44 @@ async def cmd_list(message: Message):
 @dp.message(Command("price"))
 async def cmd_price(message: Message):
     parts = message.text.split()
+
+    if len(parts) == 1:
+        with closing(sqlite3.connect(DB_PATH)) as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT symbol FROM favorites WHERE user_id = ?",
+                (message.from_user.id,)
+            )
+            rows = cur.fetchall()
+        if not rows:
+            await message.answer(
+                "В избранном пока нет пар. Добавь пару через /add BTCUSDT"
+            )
+            return
+
+    lines = []
+    for (symbol,) in rows:
+        try:
+            price = get_price(symbol)
+            lines.append(f"{symbol}: <b>{price}</b>")
+        except Exception as e:
+            lines.append(f"{symbol}: ошибка получения цены ({e})")
+
+    await message.answer("\n".join(lines))
+    return
+
     if len(parts) != 2:
-        await message.answer("Использование: /price BTCUSDT")
+        await message.answer("Использование: /price BTCUSDT или просто /price")
         return
 
     symbol = parts[1].upper()
-
     try:
         price = get_price(symbol)
     except Exception as e:
         await message.answer(f"Не удалось получить цену для {symbol}: {e}")
         return
 
-    await message.answer(
-        f"Текущая цена <b>{symbol}</b>: <b>{price}</b>"
-    )
+    await message.answer(f"Текущая цена <b>{symbol}</b>: <b>{price}</b>")
 
 
 @dp.message(Command("del"))
