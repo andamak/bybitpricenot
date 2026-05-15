@@ -153,7 +153,6 @@ async def on_startup(bot: Bot):
         BotCommand(command="list", description="Показать избранные пары"),
         BotCommand(command="del", description="Удалить пару из избранного"),
         BotCommand(command="watch", description="Показать или создать алерт"),
-        BotCommand(command="keyboard", description="Сбросить reply keyboard"),
         ])
     logger.info("Бот запускается")
     if CHAT_ID:
@@ -177,7 +176,6 @@ async def cmd_start(message: Message):
         "/del SYMBOL — удалить из избранных\n"
         "/watch [SYMBOL DIRECTION PRICE INTERVAL] — показать алерты или создать новый\n"
         "/id — показать chat_id и user_id\n"
-        "/keyboard — убрать reply keyboard и обновить интерфейс\n"
         "Пример: /watch BTCUSDT up 65000 60"
     )
 
