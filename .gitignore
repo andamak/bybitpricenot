@@ -52,7 +52,7 @@ coverage.xml
 cover/
 
 *.patch
-*.db
+bot.db
 # Translations
 *.mo
 *.pot
@@ -207,3 +207,4 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+bot.db
