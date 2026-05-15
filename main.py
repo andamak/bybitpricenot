@@ -11,7 +11,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import Message
 from aiogram.client.session.aiohttp import AiohttpSession
-from aiohttp_socks import ProxyConnector
+
 
 # ---------------- БАЗОВЫЕ НАСТРОЙКИ ----------------
 
@@ -93,16 +93,16 @@ logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
 # ---------------- AIROGRAM ОБЪЕКТЫ ----------------
-
-if TG_PROXY_URL:
-    logger.info("Telegram proxy enabled: %s", mask_proxy_url(TG_PROXY_URL))
-    proxy_connector = ProxyConnector.from_url(TG_PROXY_URL)
-    bot_session = AiohttpSession(connector=proxy_connector)
-    bot = Bot(token=TOKEN, session=bot_session)
-else:
-    logger.info("Telegram proxy disabled")
-    bot = Bot(token=TOKEN)
 dp = Dispatcher()
+
+def create_bot() -> Bot:
+    if TG_PROXY_URL:
+        logger.info("Telegram proxy enabled: %s", mask_proxy_url(TG_PROXY_URL))
+        bot_session = AiohttpSession(proxy=TG_PROXY_URL)
+        return Bot(token=TOKEN, session=bot_session)
+
+    logger.info("Telegram proxy disabled")
+    return Bot(token=TOKEN)
 
 
 # ---------------- БАЗА ДАННЫХ ----------------
@@ -144,7 +144,7 @@ def get_price(symbol: str) -> float:
 
 # ---------------- ХЕЛПЕР НА СТАРТ ----------------
 
-async def on_startup():
+async def on_startup(bot: Bot):
     logger.info("Бот запускается")
     if CHAT_ID:
         try:
@@ -162,6 +162,7 @@ async def cmd_start(message: Message):
     await message.answer(
         "Привет! Я бот для отслеживания цен на Bybit.\n"
         "/add SYMBOL — добавить пару в избранное (например, /add BTCUSDT)\n"
+        "/price SYMBOL — показать текущую цену пары (например, /price BTCUSDT)\n"
         "/list — показать избранные\n"
         "/del SYMBOL — удалить из избранных\n"
         "/watch SYMBOL DIRECTION PRICE INTERVAL — создать алерт\n"
@@ -208,6 +209,26 @@ async def cmd_list(message: Message):
         except Exception as e:
             lines.append(f"{symbol}: ошибка получения цены ({e})")
     await message.answer("\n".join(lines))
+
+
+@dp.message(Command("price"))
+async def cmd_price(message: Message):
+    parts = message.text.split()
+    if len(parts) != 2:
+        await message.answer("Использование: /price BTCUSDT")
+        return
+
+    symbol = parts[1].upper()
+
+    try:
+        price = get_price(symbol)
+    except Exception as e:
+        await message.answer(f"Не удалось получить цену для {symbol}: {e}")
+        return
+
+    await message.answer(
+        f"Текущая цена <b>{symbol}</b>: <b>{price}</b>"
+    )
 
 
 @dp.message(Command("del"))
@@ -266,7 +287,7 @@ async def cmd_watch(message: Message):
 
 # ---------------- ФОНОВЫЙ ВОРКЕР ----------------
 
-async def alerts_worker():
+async def alerts_worker(bot: Bot):
     while True:
         with closing(sqlite3.connect(DB_PATH)) as conn:
             cur = conn.cursor()
@@ -313,9 +334,10 @@ async def alerts_worker():
 # ---------------- ТОЧКА ВХОДА ----------------
 
 async def main():
+    bot = create_bot()
     init_db()
-    await on_startup()
-    asyncio.create_task(alerts_worker())
+    await on_startup(bot)
+    asyncio.create_task(alerts_worker(bot))
     await dp.start_polling(bot)
 
 
