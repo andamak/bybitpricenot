@@ -3,12 +3,15 @@ import logging
 import sqlite3
 import os
 from contextlib import closing
+from urllib.parse import urlsplit, urlunsplit
 
 import requests
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import Message
+from aiogram.client.session.aiohttp import AiohttpSession
+from aiohttp_socks import ProxyConnector
 
 # ---------------- БАЗОВЫЕ НАСТРОЙКИ ----------------
 
@@ -24,6 +27,49 @@ BASE = "https://api.bybit.com"
 # Путь к файлу БД рядом с этим скриптом
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "bot.db")
+
+def build_tg_proxy_url() -> str:
+    proxy_url = (os.getenv("TG_PROXY_URL") or "").strip()
+    if proxy_url:
+        return proxy_url
+
+    host = (os.getenv("TG_PROXY_HOST") or "").strip()
+    port = (os.getenv("TG_PROXY_PORT") or "").strip()
+    user = (os.getenv("TG_PROXY_USER") or "").strip()
+    password = (os.getenv("TG_PROXY_PASS") or "").strip()
+
+    if not host or not port:
+        return ""
+
+    auth = ""
+    if user and password:
+        auth = f"{user}:{password}@"
+    elif user:
+        auth = f"{user}@"
+
+    return f"socks5://{auth}{host}:{port}"
+
+
+def mask_proxy_url(proxy_url: str) -> str:
+    if not proxy_url:
+        return ""
+
+    parsed = urlsplit(proxy_url)
+    hostname = parsed.hostname or ""
+    port = f":{parsed.port}" if parsed.port else ""
+
+    if parsed.username and parsed.password:
+        netloc = f"{parsed.username}:***@{hostname}{port}"
+    elif parsed.username:
+        netloc = f"{parsed.username}@{hostname}{port}"
+    else:
+        netloc = f"{hostname}{port}"
+
+    return urlunsplit((parsed.scheme, netloc, parsed.path, parsed.query, parsed.fragment))
+
+
+TG_PROXY_URL = build_tg_proxy_url()
+
 
 # ---------------- ЛОГИРОВАНИЕ ----------------
 
@@ -48,7 +94,14 @@ logger.addHandler(console_handler)
 
 # ---------------- AIROGRAM ОБЪЕКТЫ ----------------
 
-bot = Bot(token=TOKEN)
+if TG_PROXY_URL:
+    logger.info("Telegram proxy enabled: %s", mask_proxy_url(TG_PROXY_URL))
+    proxy_connector = ProxyConnector.from_url(TG_PROXY_URL)
+    bot_session = AiohttpSession(connector=proxy_connector)
+    bot = Bot(token=TOKEN, session=bot_session)
+else:
+    logger.info("Telegram proxy disabled")
+    bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
 
