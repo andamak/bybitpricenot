@@ -176,7 +176,7 @@ async def cmd_start(message: Message):
         "/del SYMBOL — удалить из избранных\n"
         "/watch [SYMBOL DIRECTION PRICE INTERVAL] — показать алерты или создать новый\n"
         "/id — показать chat_id и user_id\n"
-        "Пример: /watch BTCUSDT up 65000 60."
+        "Пример: /watch BTCUSDT up 65000 60"
     )
 
 
